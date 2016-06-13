@@ -1,0 +1,15 @@
+- name: install monit
+  yum: name=monit
+
+- name: copy monit conf
+  copy:
+          src: files/monitrc
+          dest: /etc/monitrc
+
+- name: copy monit delayed_job conf
+  copy:
+          src: files/delayed_job
+          dest: /etc/monit.d/delayed_job
+
+- name: Ensure the monit service is running
+  service: name=monit state=started enabled=yes

@@ -1,0 +1,5 @@
+check process delayed_job
+  with pidfile /usr/share/nginx/incubator107/current/tmp/pids/delayed_job.pid
+  start program = "/usr/share/nginx/incubator107/current/bin/monit_delayed_job.sh start production" as uid incubator and gid incubator
+  stop program = "/usr/share/nginx/incubator107/current/bin/monit_delayed_job.sh stop production" as uid incubator and gid incubator
+

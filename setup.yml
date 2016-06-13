@@ -1,0 +1,91 @@
+---
+  - name: Provision inccubator107 machine on centos 7
+    hosts: incubator107
+    user: root
+    pre_tasks:
+       - include_vars: secret.yml
+
+       - name: Create user
+         user:
+           name: incubator
+           createhome: yes
+           shell: /bin/bash
+
+       - name: add user ssh key
+         authorized_key:
+           user: incubator
+           key: "{{ lookup('file', '/home/cip/.ssh/id_rsa.pub') }}"
+                   
+       - name: add incubator to sudoers
+         lineinfile: 
+           dest: /etc/sudoers.d/incubator
+           line: "%incubator ALL=NOPASSWD: /usr/bin/systemctl *  nginx, /sbin/service nginx *"
+           create: yes
+                 
+       - name: update system,
+         yum: name=* state=latest
+
+    roles:
+        - role: geerlingguy.repo-epel
+        - role: rvm_io.rvm1-ruby
+          rvm1_rubies:
+            - 'ruby-2.2.2'
+
+        - role: passenger
+
+        - role: jdauphant.nginx
+          nginx_http_params:
+            - sendfile "on"
+            - access_log "/var/log/nginx/access.log"
+          nginx_sites:
+            incubator107:
+              - listen 80
+              - root /usr/share/nginx/incubator107/current/public
+              - passenger_enabled on
+              - location ~* \.(eot|otf|ttf|woff|woff2)$ { add_header Access-Control-Allow-Origin *; }
+          tags: nginx
+
+        - role: geerlingguy.nodejs
+          nodejs_version: "6.x"
+          tags: nodejs
+
+    tasks:
+
+      - include: dependencies.yml
+
+      - include: aws-setup.yml
+
+      - include: postgres.yml
+
+      - name: setup directory structure
+        file: 
+            path: "{{ application_folder }}/{{ item }}"
+            owner: incubator        
+            group: incubator        
+            state: directory
+        with_items: 
+            - shared
+            - shared/pids
+            - releases
+            - shared/config
+            - shared/vendor/bundle
+            - shared/log
+            - shared/tmp
+
+      - name: download images backup
+        become: true
+        become_user: incubator
+        shell: aws s3 ls incubator107/paperclip | tail -n 1 | awk '{ print $4 }' | xargs -i aws s3 cp s3://incubator107/{} /tmp/paperclip.tar.gz
+
+      - shell: tar xzf /tmp/paperclip.tar.gz --strip-components=4 -C /usr/share/nginx/incubator107/shared
+
+      - template: src=templates/database.j2  dest=/usr/share/nginx/incubator107/shared/config/database.yml owner=incubator group=incubator mode=0644
+
+      - include: monit.yml
+
+      - file: path=/usr/share/nginx/incubator107 owner=incubator group=incubator recurse=true 
+
+      - name: setup backup
+        copy: 
+          src: files/backup-incubator.sh
+          dest: /etc/cron.weekly/backup-incubator

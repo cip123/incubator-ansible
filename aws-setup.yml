@@ -1,0 +1,22 @@
+- name: install AWS cli 
+  pip: name=awscli
+  tags: aws
+
+- name: ensure .aws directory exist
+  become: true
+  become_user: incubator
+  file: path=/home/incubator/.aws state=directory
+  tags: aws
+
+
+- name: copy aws config
+  become: true
+  become_user: incubator
+  template: src=templates/aws-config.j2 dest=/home/incubator/.aws/config
+  tags: aws
+
+- name: copy aws credentials
+  become: true
+  become_user: incubator
+  template: src=templates/aws-credentials.j2 dest=/home/incubator/.aws/credentials
+  tags: aws

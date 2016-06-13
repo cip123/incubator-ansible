@@ -1,0 +1,35 @@
+- name: install postgres
+  yum: state=present name={{ item }}
+  with_items:
+    - postgresql-server
+    - postgresql-devel
+    - postgresql-contrib
+
+- name: Initiate database
+  shell: postgresql-setup initdb
+          creates=/var/lib/pgsql/data/postgresql.conf
+
+- name: Ensure the PostgreSQL service is running
+  service: name=postgresql state=started enabled=yes
+
+- name: Ensure database is created
+  become: true
+  become_user: postgres
+  postgresql_db: name={{ database_name }}
+
+- postgresql_user: name=incubator role_attr_flags=CREATEDB,SUPERUSER
+  become: true
+  become_user: postgres
+  tags: postgres
+
+- name: download database backup from amazon
+  become: true
+  become_user: incubator
+  shell: aws s3 ls incubator107/production-db | tail -n 1 | awk '{ print $4 }' | xargs -i aws s3 cp s3://incubator107/{} /tmp/production-db.gz
+
+- name: import database
+  become: true
+  become_user: postgres
+  shell: gunzip -c /tmp/production-db.gz | psql {{ database_name }}
+
+ 

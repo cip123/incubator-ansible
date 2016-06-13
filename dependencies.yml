@@ -1,0 +1,16 @@
+  - name: install dependencies
+    yum: state=present name={{ item }}
+    with_items:
+      - python-pip
+      - python-psycopg2
+      - git
+      - unzip
+      - vim
+      - gcc-c++
+      - libcurl-devel
+      - pygpgme
+      - ntp
+   
+  - name: Ensure the ntpd service is running
+    service: name=ntpd state=started enabled=yes
+

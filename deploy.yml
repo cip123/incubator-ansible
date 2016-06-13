@@ -1,0 +1,58 @@
+- name: Deploy incubator
+  hosts: incubator107
+  user: incubator
+
+  tasks:
+    - set_fact: application_folder=/usr/share/nginx/incubator107
+      tags: cleanup
+    - set_fact: timestamp={{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}
+    - set_fact: release_path={{ application_folder }}/releases/{{ timestamp }}
+
+    - name: checkout from git
+      git: repo=https://github.com/cip123/incubator107  dest={{ release_path }}
+    
+    - name: Symlink shared files
+      file:
+              src: "{{ application_folder }}/shared/{{ item }}"
+              dest: "{{ release_path }}/{{ item }}"
+              state: link
+              force: yes
+      with_items:
+        - config/database.yml
+        - public/system  
+        - pids  
+        - log
+        - tmp
+        - vendor/bundle
+    
+    - name: Install bundle
+      command: 'bundle install --deployment --without="development test"'
+      args:
+              chdir: "{{ release_path }}"
+    
+    - name: Precompile assets
+      command: bundle exec rake assets:precompile chdir={{ release_path }}
+      environment:
+              RAILS_ENV: production
+    
+    - name: Migrate database
+      command: bundle exec rake db:migrate chdir={{ release_path }}
+      environment:
+              RAILS_ENV: production 
+    
+    - name: Symlink new release
+      file:
+        src: "{{ release_path }}"
+        dest: "{{ application_folder }}/current"
+        state: link
+        force: yes
+    
+    - name: Restart nginx
+      command: sudo systemctl restart nginx
+      tags: nginx
+    
+    - name: Cleanup
+      shell: "ls -1t  {{ application_folder }}/releases | tail -n +5 | xargs rm -rf"
+      args: 
+        chdir: "{{ application_folder }}/releases"
+      tags: cleanup

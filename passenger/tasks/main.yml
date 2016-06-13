@@ -1,0 +1,22 @@
+---
+# tasks file for passenger
+ 
+  - yum_repository:
+          name: somerepo
+          description: Some YUM repo
+          baseurl: https://oss-binaries.phusionpassenger.com/yum/passenger/el/$releasever/$basearch
+          gpgkey: https://packagecloud.io/gpg.key
+          gpgcheck: no
+
+
+  - name: install passenger
+    yum: name=passenger disable_gpg_check=yes
+
+  - name: ensure nginx directory exists
+    file: path=/etc/nginx/conf.d/ recurse=yes state=directory
+
+  - name: copy passenger.conf
+    copy:
+            src: passenger.conf
+            dest: /etc/nginx/conf.d/passenger.conf
+
