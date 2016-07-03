@@ -1,9 +1,10 @@
 ---
-  - name: Provision inccubator107 machine on centos 7
+  - name: Provision incubator107 machine on centos 7
     hosts: incubator107
     user: root
     pre_tasks:
        - include_vars: secret.yml
+         tags: setup
 
        - name: Create user
          user:
@@ -43,6 +44,7 @@
               - root /usr/share/nginx/incubator107/current/public
               - passenger_enabled on
               - location ~* \.(eot|otf|ttf|woff|woff2)$ { add_header Access-Control-Allow-Origin *; }
+              - passenger_env_var FACEBOOK_APP_TOKEN "{{ facebook_app_token }}"
           tags: nginx
 
         - role: geerlingguy.nodejs
